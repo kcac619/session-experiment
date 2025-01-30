@@ -1,0 +1,15 @@
+{
+  "name": "@session-experiment/web",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "web",
+    "projectType": "application",
+    "sourceRoot": "web"
+  },
+  "dependencies": {
+    "next": "~15.1.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  }
+}
