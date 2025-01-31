@@ -1,7 +1,21 @@
 {
   "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2021", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declaration": true,
+    "removeComments": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2017",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"],
   "files": [],
-  "include": [],
   "references": [
     {
       "path": "./tsconfig.app.json"

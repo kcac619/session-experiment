@@ -3,20 +3,24 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User } from '../app/entities';
+import * as _ from 'lodash';
+
+import { User, Device } from '../app/entities';
 import { LoginDto, RegisterDto } from './dto/auth.dto';
 import { Response } from 'express';
+import { SessionService } from './services/session.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private readonly jwtService: JwtService
+    @InjectRepository(Device)
+    private readonly deviceRepository: Repository<Device>,
+    private readonly sessionService: SessionService
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -38,7 +42,12 @@ export class AuthService {
     return { message: 'User registered successfully' };
   }
 
-  async login(loginDto: LoginDto, response: Response) {
+  async login(
+    loginDto: LoginDto,
+    response: Response,
+    userAgent: string,
+    ipAddress: string
+  ) {
     const user = await this.userRepository.findOne({
       where: { email: loginDto.email },
     });
@@ -56,20 +65,74 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const token = this.jwtService.sign({ sub: user.id });
+    // Create new session
+    const { accessToken, refreshToken, accessTokenExpiry, refreshTokenExpiry } =
+      await this.sessionService.createSession(user, userAgent, ipAddress);
 
-    response.cookie('Authentication', token, {
+    // Set cookies
+    response.cookie('accessToken', accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      expires: accessTokenExpiry,
+    });
+
+    response.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      expires: refreshTokenExpiry,
     });
 
     return { message: 'Logged in successfully' };
   }
 
-  async logout(response: Response) {
-    response.clearCookie('Authentication');
+  async logout(sessionId: string, response: Response) {
+    await this.sessionService.deactivateSession(sessionId);
+
+    response.clearCookie('accessToken');
+    response.clearCookie('refreshToken');
+
     return { message: 'Logged out successfully' };
+  }
+
+  async logoutAllDevices(
+    userId: string,
+    currentSessionId: string,
+    response: Response
+  ) {
+    await this.sessionService.deactivateAllUserSessions(
+      userId,
+      currentSessionId
+    );
+    return { message: 'Logged out from all other devices' };
+  }
+
+  async getUserDevices(userId: string) {
+    const devices = await this.deviceRepository.find({
+      where: {
+        user: { id: userId },
+        isActive: true,
+      },
+      relations: ['sessions'],
+      order: {
+        createdAt: 'DESC',
+      },
+    });
+
+    return devices.map((device) => {
+      const activeSessions = device.sessions.filter(
+        (session) => session.isActive
+      );
+      const lastSession = _.maxBy(activeSessions, 'lastActivityAt');
+
+      return {
+        id: device.id,
+        userAgent: device.userAgent,
+        ipAddress: device.ipAddress,
+        lastActivityAt: lastSession?.lastActivityAt || device.createdAt,
+        activeSessions: activeSessions.length,
+      };
+    });
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-import styles from './index.module.css';
+import { DevicesList } from '../components/DevicesList';
 
 export default function Home() {
   const router = useRouter();
@@ -10,7 +10,7 @@ export default function Home() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        await axios.get('http://localhost:3000/auth/me', {
+        await axios.get('http://localhost:3000/api/auth/me', {
           withCredentials: true,
         });
         setLoading(false);
@@ -25,7 +25,7 @@ export default function Home() {
   const handleLogout = async () => {
     try {
       await axios.post(
-        'http://localhost:3000/auth/logout',
+        'http://localhost:3000/api/auth/logout',
         {},
         { withCredentials: true }
       );
@@ -36,26 +36,26 @@ export default function Home() {
   };
 
   if (loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="loading-container">
+        <p>Loading...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Welcome to the Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-          >
-            Logout
-          </button>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <p>
-            This is a protected page. You can only see this if you're logged in.
-          </p>
-        </div>
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h1>Welcome to the Dashboard</h1>
+        <button onClick={handleLogout} className="logout-btn">
+          Logout
+        </button>
+      </div>
+      <div className="dashboard-content">
+        <p>
+          This is a protected page. You can only see this if you're logged in.
+        </p>
+        <DevicesList />
       </div>
     </div>
   );

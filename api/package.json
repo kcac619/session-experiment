@@ -2,6 +2,18 @@
   "name": "@session-experiment/api",
   "version": "0.0.1",
   "private": true,
+  "dependencies": {
+    "@nestjs/common": "^10.0.2",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/core": "^10.0.2",
+    "@nestjs/jwt": "^11.0.0",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^10.0.2",
+    "@nestjs/schedule": "^3.0.1",
+    "@nestjs/typeorm": "^11.0.0",
+    "cookie-parser": "^1.4.6",
+    "typeorm": "^0.3.20"
+  },
   "nx": {
     "name": "api",
     "projectType": "application",
@@ -43,5 +55,8 @@
         }
       }
     }
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.15"
   }
 }
