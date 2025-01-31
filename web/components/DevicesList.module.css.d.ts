@@ -1,5 +1,6 @@
 declare const styles: {
   container: string;
+  header: string;
   heading: string;
   error: string;
   deviceCard: string;
@@ -8,6 +9,7 @@ declare const styles: {
   infoItem: string;
   badge: string;
   skeleton: string;
+  refreshButton: string;
 };
 
 export default styles;

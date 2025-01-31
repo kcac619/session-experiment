@@ -29,6 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: { sub: string; sessionId: string }) {
+    //sub is the user id
     this.logger.log(`Validating JWT payload: ${JSON.stringify(payload)}`);
 
     // Validate session using session service

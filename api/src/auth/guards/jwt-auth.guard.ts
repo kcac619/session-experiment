@@ -2,6 +2,7 @@ import {
   Injectable,
   ExecutionContext,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SessionService } from '../services/session.service';
@@ -9,6 +10,8 @@ import { Observable, from } from 'rxjs';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
+  private readonly logger = new Logger(JwtAuthGuard.name);
+
   constructor(private readonly sessionService: SessionService) {
     super();
   }
@@ -33,11 +36,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       const refreshToken = request.cookies?.refreshToken;
 
       if (!refreshToken) {
+        this.logger.warn('No refresh token found');
         throw new UnauthorizedException('No refresh token');
       }
 
       const result = await this.sessionService.refreshSession(refreshToken);
       if (!result) {
+        this.logger.warn('Invalid or expired refresh token');
         throw new UnauthorizedException('Invalid refresh token');
       }
 

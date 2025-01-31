@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { LessThan, Repository } from 'typeorm';
 
-import { Device, Session, User } from '../../app/entities';
 import { JwtService } from '@nestjs/jwt';
+import { Device, Session, User } from '../../app/entities';
 
 @Injectable()
 export class SessionService {
   private readonly logger = new Logger(SessionService.name);
-  private readonly ACCESS_TOKEN_EXPIRY = 15 * 60 * 1000; // 15 minutes
+  private readonly ACCESS_TOKEN_EXPIRY = 20 * 1000; // 20 seconds
   private readonly REFRESH_TOKEN_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
 
   constructor(
@@ -38,6 +38,7 @@ export class SessionService {
         user: { id: user.id },
         isActive: true,
       },
+      relations: ['sessions'],
     });
 
     if (!device) {
@@ -47,6 +48,16 @@ export class SessionService {
         user,
       });
       await this.deviceRepository.save(device);
+    }
+
+    // Check for existing active session
+    const existingSession = device.sessions?.find(
+      (session) => session.isActive
+    );
+    if (existingSession) {
+      // Deactivate old session
+      existingSession.isActive = false;
+      await this.sessionRepository.save(existingSession);
     }
 
     // Create refresh token expiry
@@ -69,7 +80,7 @@ export class SessionService {
         sub: user.id,
         sessionId: session.id,
       },
-      { expiresIn: '15m' }
+      { expiresIn: '20s' }
     );
 
     const refreshToken = this.jwtService.sign(
@@ -128,13 +139,19 @@ export class SessionService {
         where: {
           id: payload.sessionId,
           refreshToken,
-          isActive: true,
+          // Don't check isActive here since we want to reactivate expired sessions
         },
-        relations: ['user'],
+        relations: ['user', 'device'],
       });
 
+      // If refresh token is expired or session not found, return null
       if (!session || session.refreshTokenExpiresAt < new Date()) {
         return null;
+      }
+
+      // Reactivate session if it was inactive
+      if (!session.isActive) {
+        session.isActive = true;
       }
 
       // Generate new access token
@@ -143,7 +160,7 @@ export class SessionService {
           sub: session.user.id,
           sessionId: session.id,
         },
-        { expiresIn: '15m' }
+        { expiresIn: '20s' }
       );
 
       const accessTokenExpiry = new Date(Date.now() + this.ACCESS_TOKEN_EXPIRY);
@@ -202,16 +219,16 @@ export class SessionService {
     await query.execute();
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron('*/30 * * * * *') // Run every 30 seconds
   async cleanupExpiredSessions() {
     this.logger.log('Running expired sessions cleanup');
-    const fifteenMinutesAgo = new Date(Date.now() - this.ACCESS_TOKEN_EXPIRY);
+    const twentySecondsAgo = new Date(Date.now() - this.ACCESS_TOKEN_EXPIRY);
 
     try {
       const result = await this.sessionRepository.update(
         {
           isActive: true,
-          lastActivityAt: LessThan(fifteenMinutesAgo),
+          lastActivityAt: LessThan(twentySecondsAgo),
         },
         {
           isActive: false,

@@ -45,24 +45,24 @@ export const DevicesList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchDevices = async () => {
-      try {
-        const response = await axios.get<Device[]>(
-          'http://localhost:3000/api/auth/devices',
-          {
-            withCredentials: true,
-          }
-        );
-        setDevices(response.data);
-      } catch (err) {
-        setError('Failed to load devices');
-        console.error('Error fetching devices:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchDevices = async () => {
+    try {
+      const response = await axios.get<Device[]>(
+        'http://localhost:3000/api/auth/devices',
+        {
+          withCredentials: true,
+        }
+      );
+      setDevices(response.data);
+    } catch (err) {
+      setError('Failed to load devices');
+      console.error('Error fetching devices:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDevices();
   }, []);
 
@@ -86,7 +86,16 @@ export const DevicesList = () => {
 
   return (
     <div className={styles.container}>
-      <h2 className={styles.heading}>Your Devices</h2>
+      <div className={styles.header}>
+        <h2 className={styles.heading}>Your Devices</h2>
+        <button
+          className={styles.refreshButton}
+          onClick={fetchDevices}
+          disabled={isLoading}
+        >
+          {isLoading ? 'Refreshing...' : '🔄 Refresh'}
+        </button>
+      </div>
       {devices.length === 0 ? (
         <div>No active devices found</div>
       ) : (
