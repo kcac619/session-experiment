@@ -149,12 +149,34 @@ export class SessionService {
         return null;
       }
 
-      // Reactivate session if it was inactive
+      // If session is inactive (stale), create a new session instead of reactivating
       if (!session.isActive) {
-        session.isActive = true;
+        // Create new session
+        const newSession = this.sessionRepository.create({
+          user: session.user,
+          device: session.device,
+          refreshToken: session.refreshToken,
+          refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+          lastActivityAt: new Date(),
+        });
+        await this.sessionRepository.save(newSession);
+
+        // Generate new access token with new session id
+        const accessToken = this.jwtService.sign(
+          {
+            sub: session.user.id,
+            sessionId: newSession.id,
+          },
+          { expiresIn: '20s' }
+        );
+
+        const accessTokenExpiry = new Date(
+          Date.now() + this.ACCESS_TOKEN_EXPIRY
+        );
+        return { accessToken, accessTokenExpiry };
       }
 
-      // Generate new access token
+      // For active sessions, just update the access token
       const accessToken = this.jwtService.sign(
         {
           sub: session.user.id,
